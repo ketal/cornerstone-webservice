@@ -33,12 +33,12 @@ import com.codahale.metrics.annotation.Timed;
 import com.codahale.metrics.json.MetricsModule;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.ketal.webservice.authorization.AdminRole;
+import com.github.ketal.webservice.authorization.MonitorRole;
 import com.github.ketal.webservice.configuration.BaseWebserviceConfig;
 import com.github.ketal.webservice.configuration.injection.Config;
 
 @Path("/metrics")
-@AdminRole
+@MonitorRole
 public class MetricsResource {
     
     @Inject
@@ -47,19 +47,13 @@ public class MetricsResource {
     @Config
     private BaseWebserviceConfig config;
 
-    public MetricsResource() {
-    }
-
     private ObjectMapper getObjectMapper() {
         final TimeUnit rateUnit = parseTimeUnit(config.getRateUnit(), TimeUnit.SECONDS);
         final TimeUnit durationUnit = parseTimeUnit(config.getDurationUnit(), TimeUnit.SECONDS);
         final boolean showSamples = false;
 
-        MetricFilter filter = null;
         // MetricFilter filter = (MetricFilter) context.getAttribute(METRIC_FILTER);
-        if (filter == null) {
-            filter = MetricFilter.ALL;
-        }
+        MetricFilter filter = MetricFilter.ALL;
 
         return new ObjectMapper().registerModule(new MetricsModule(rateUnit, durationUnit, showSamples, filter));
     }

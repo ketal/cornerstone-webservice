@@ -20,10 +20,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
+import java.nio.charset.Charset;
 
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.Produces;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.ext.MessageBodyWriter;
@@ -54,20 +54,20 @@ public class WsErrorMessageBodyWriter implements MessageBodyWriter<WsError> {
 
     @Override
     public void writeTo(WsError error, Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType,
-            MultivaluedMap<String, Object> httpHeaders, OutputStream entityStream) throws IOException, WebApplicationException {
+            MultivaluedMap<String, Object> httpHeaders, OutputStream entityStream) throws IOException {
         try {
             JAXBContext jaxbContext = JAXBContextFactory.createContext(new Class[] { type }, null);
             Marshaller marshaller = jaxbContext.createMarshaller();
 
             if (MediaType.APPLICATION_JSON_TYPE.equals(mediaType)
                     || (!MediaType.APPLICATION_XML_TYPE.equals(mediaType) && !MediaType.TEXT_PLAIN_TYPE.equals(mediaType))) {
-                marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+                marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
                 marshaller.setProperty(MarshallerProperties.MEDIA_TYPE, MediaType.APPLICATION_JSON);
-                marshaller.setProperty(MarshallerProperties.JSON_INCLUDE_ROOT, false);
+                marshaller.setProperty(MarshallerProperties.JSON_INCLUDE_ROOT, Boolean.FALSE);
             }
 
             if (MediaType.TEXT_PLAIN_TYPE.equals(mediaType)) {
-                entityStream.write(error.toString().getBytes());
+                entityStream.write(error.toString().getBytes(Charset.forName("UTF-8")));
             } else {
                 marshaller.marshal(error, entityStream);
             }

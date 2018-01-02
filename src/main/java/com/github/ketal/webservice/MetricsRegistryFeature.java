@@ -18,38 +18,23 @@ package com.github.ketal.webservice;
 
 import java.lang.management.ManagementFactory;
 
-import org.glassfish.hk2.utilities.binding.AbstractBinder;
-
 import com.codahale.metrics.JmxReporter;
 import com.codahale.metrics.JvmAttributeGaugeSet;
 import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.jersey2.InstrumentedResourceMethodApplicationListener;
 import com.codahale.metrics.jvm.BufferPoolMetricSet;
 import com.codahale.metrics.jvm.ClassLoadingGaugeSet;
 import com.codahale.metrics.jvm.FileDescriptorRatioGauge;
 import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
 import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
 import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
-import com.github.ketal.webservice.resource.MetricsResource;
 
 public class MetricsRegistryFeature {
-
-    private WebserviceApplication<?> application;
     
     private MetricRegistry metricRegistry;
     
-    private boolean metricsAreRegistered;
     private JmxReporter jmxReporter;
     
-    public MetricsRegistryFeature(WebserviceApplication<?> application) {
-       this.application = application;
-    }
-    
-    protected void registerMetrics() {
-        if (metricsAreRegistered) {
-            return;
-        }
-
+    public MetricsRegistryFeature() {
         this.metricRegistry = new MetricRegistry();
 
         this.metricRegistry.register("jvm.attribute", new JvmAttributeGaugeSet());
@@ -61,17 +46,6 @@ public class MetricsRegistryFeature {
         this.metricRegistry.register("jvm.threads", new ThreadStatesGaugeSet());
         jmxReporter = JmxReporter.forRegistry(this.metricRegistry).build();
         jmxReporter.start();
-
-        this.application.register(new InstrumentedResourceMethodApplicationListener(this.metricRegistry));
-        this.application.register(new AbstractBinder() {
-            @Override
-            protected void configure() {
-                bind(metricRegistry).to(MetricRegistry.class);
-            }
-        });
-
-        this.application.register(MetricsResource.class);
-        metricsAreRegistered = true;
     }
 
     protected void deregisterMetrics() {

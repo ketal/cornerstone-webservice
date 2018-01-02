@@ -17,13 +17,17 @@
 package com.github.ketal.webservice.jwt;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.security.Principal;
 
 import javax.annotation.Priority;
+import javax.annotation.security.PermitAll;
+import javax.annotation.security.RolesAllowed;
 import javax.ws.rs.Priorities;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.PreMatching;
+import javax.ws.rs.container.ResourceInfo;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
@@ -44,11 +48,11 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 
 @Provider
-@PreMatching
+//@PreMatching
 @Priority(Priorities.AUTHENTICATION)
 public class JWTAuthenticationFilter implements ContainerRequestFilter {
 
-    private final static Logger logger = LogManager.getLogger(JWTAuthenticationFilter.class);
+    private static final Logger logger = LogManager.getLogger(JWTAuthenticationFilter.class);
 
     private static final String AUTHENTICATION_SCHEME = "Bearer";
 
@@ -57,19 +61,29 @@ public class JWTAuthenticationFilter implements ContainerRequestFilter {
 
     @Context
     private UriInfo uriInfo;
+    
+    @Context
+    private ResourceInfo resourceInfo;
 
     @Override
     public void filter(ContainerRequestContext requestContext) throws IOException {
 
-        // If the request is for authentication then let it continue
-        if(config.isUriAuthWhitelisted(uriInfo.getPath())) {
+//        // If the request is for authentication then let it continue
+//        if(config.isUriAuthWhitelisted(uriInfo.getPath())) {
+//            return;
+//        }
+        Method resourceMethod = resourceInfo.getResourceMethod();
+        Class<?> resourceClass = resourceInfo.getResourceClass();
+        //Access allowed for all
+        if(resourceMethod.isAnnotationPresent(PermitAll.class) || 
+                (!resourceMethod.isAnnotationPresent(RolesAllowed.class) && resourceClass.isAnnotationPresent(PermitAll.class))) {
             return;
         }
 
         // Get the Authorization header from the request
         String authorizationHeader = requestContext.getHeaderString(HttpHeaders.AUTHORIZATION);
         // Authorization header must not be null and must be prefixed with "Bearer" plus a whitespace
-        if (authorizationHeader == null || !authorizationHeader.toLowerCase().startsWith(AUTHENTICATION_SCHEME.toLowerCase() + " ")) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith(AUTHENTICATION_SCHEME + " ")) {
             abortWithUnauthorized(requestContext, null);
             return;
         }
@@ -81,12 +95,12 @@ public class JWTAuthenticationFilter implements ContainerRequestFilter {
             requestContext.setSecurityContext(newSecurityContext);
         } catch (Exception e) {
             logger.info("Exception caught in AuthenticationFilter. JWT Token validation error: {}", e.getMessage());
-            logger.debug(e);
+            logger.debug("Exception stacktrace: ", e);
             abortWithUnauthorized(requestContext, e);
         }
     }
 
-    public JWTPrincipal validateToken(String jwtToken) throws Exception {
+    public JWTPrincipal validateToken(String jwtToken) throws JWTException {
         JWTTokenUtil jwtUtil = new JWTTokenUtil(config.getJwtToken().getSecretKey());
         return jwtUtil.validateToken(jwtToken);
     }
@@ -107,7 +121,7 @@ public class JWTAuthenticationFilter implements ContainerRequestFilter {
         requestContext.abortWith(Response.status(Status.UNAUTHORIZED).entity(error).type(mediaType).build());
     }
 
-    public class JWTSecurityContext implements SecurityContext {
+    public static class JWTSecurityContext implements SecurityContext {
 
         private JWTPrincipal principal;
         private boolean isSecure;

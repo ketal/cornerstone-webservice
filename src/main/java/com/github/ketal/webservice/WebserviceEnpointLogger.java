@@ -103,6 +103,7 @@ public class WebserviceEnpointLogger {
                 endpointLogLines.add(new EndpointLogLine(method.getHttpMethod(), basePath, klass));
             }
 
+            final TypeResolver typeResolver = new TypeResolver();
             for (Resource childResource : resource.getChildResources()) {
                 for (ResourceMethod method : childResource.getAllMethods()) {
                     if (method.getType() == ResourceMethod.JaxrsType.RESOURCE_METHOD) {
@@ -110,7 +111,7 @@ public class WebserviceEnpointLogger {
                         endpointLogLines.add(new EndpointLogLine(method.getHttpMethod(), path, klass));
                     } else if (method.getType() == ResourceMethod.JaxrsType.SUB_RESOURCE_LOCATOR) {
                         final String path = normalizePath(basePath, childResource.getPath());
-                        final ResolvedType responseType = new TypeResolver().resolve(method.getInvocable().getResponseType());
+                        final ResolvedType responseType = typeResolver.resolve(method.getInvocable().getResponseType());
                         final Class<?> erasedType = !responseType.getTypeBindings().isEmpty() ? responseType.getTypeBindings().getBoundType(0).getErasedType()
                                 : responseType.getErasedType();
                         if (Resource.from(erasedType) == null) {
@@ -156,19 +157,21 @@ public class WebserviceEnpointLogger {
         private static final long serialVersionUID = 1L;
 
         @Override
-        public int compare(EndpointLogLine endpointA, EndpointLogLine endpointB) {             
-             int basePathCompare = endpointA.basePath.compareTo(endpointB.basePath);
-             if(basePathCompare != 0) {
-                 return basePathCompare;
-             }
-             
-             if(endpointA.httpMethod != null && endpointB.httpMethod == null) {
-                 return 1;
-             } else if(endpointA.httpMethod == null && endpointB.httpMethod != null) {
-                 return -1;
-             } else {
-                 return endpointA.httpMethod.compareTo(endpointB.httpMethod);
-             }
+        public int compare(EndpointLogLine endpointA, EndpointLogLine endpointB) {
+            int basePathCompare = endpointA.basePath.compareTo(endpointB.basePath);
+            if (basePathCompare != 0) {
+                return basePathCompare;
+            }
+
+            if(endpointA.httpMethod == null && endpointB.httpMethod == null) {
+                return 0;
+            } else if (endpointA.httpMethod != null && endpointB.httpMethod == null) {
+                return 1;
+            } else if (endpointA.httpMethod == null) {
+                return -1;
+            } else {
+                return endpointA.httpMethod.compareTo(endpointB.httpMethod);
+            }
         }
     }
 }

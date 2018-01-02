@@ -27,7 +27,15 @@ public class BaseWebserviceConfig {
 
     @Valid
     @NotNull
+    private boolean registerDefaults = true;
+    
+    @Valid
+    @NotNull
     private String adminResourceRole = "";
+    
+    @Valid
+    @NotNull
+    private String monitorResourceRole = "";
     
     @Valid
     @NotNull
@@ -56,6 +64,7 @@ public class BaseWebserviceConfig {
     @NotNull
     private String durationUnit = "seconds";
 
+    
     private List<String> authWhitelistedURIs;
     
     private List<Pattern> authWhitelistedURIPatterns;
@@ -136,7 +145,15 @@ public class BaseWebserviceConfig {
     
     // ***********************************************************************************************
     // Setters and Getters
-    
+
+    public boolean isRegisterDefaults() {
+        return registerDefaults;
+    }
+
+    public void setRegisterDefaults(boolean registerDefaults) {
+        this.registerDefaults = registerDefaults;
+    }    
+
     public String getAdminResourceRole() {
         return adminResourceRole;
     }
@@ -145,6 +162,14 @@ public class BaseWebserviceConfig {
         this.adminResourceRole = adminResourceRole;
     }
 
+    public String getMonitorResourceRole() {
+        return monitorResourceRole;
+    }
+
+    public void setMonitorResourceRole(String monitorResourceRole) {
+        this.monitorResourceRole = monitorResourceRole;
+    }
+    
     public boolean isRegisterCORSFilter() {
         return registerCORSFilter;
     }
@@ -225,11 +250,15 @@ public class BaseWebserviceConfig {
     }
 
     private List<Pattern> convertStringUriToPattern(List<String> authWhitelistedURIs) {
-        List<Pattern> authWhitelistedURIPatterns = new ArrayList<>();
-        for(String uri : authWhitelistedURIs) {
-            authWhitelistedURIPatterns.add(Pattern.compile(regexPatternFromURIs(uri, true)));
+        if(authWhitelistedURIs == null) {
+            return null;
         }
-        return authWhitelistedURIPatterns;
+        
+        List<Pattern> whitelistedURIPatterns = new ArrayList<>(authWhitelistedURIs.size());
+        for(String uri : authWhitelistedURIs) {
+            whitelistedURIPatterns.add(Pattern.compile(regexPatternFromURIs(uri, true)));
+        }
+        return whitelistedURIPatterns;
     }
     
     private String regexPatternFromURIs(String uri, boolean allowWildcards) { 
@@ -241,7 +270,7 @@ public class BaseWebserviceConfig {
         for (int i=0; i < uri.length(); i++) { 
             char c = uri.charAt(i); 
             if (c == '*' && allowWildcards) { 
-                regex.append("."); 
+                regex.append('.'); 
             } else if (toReplace.indexOf(c) > -1) { 
                 regex.append('\\'); 
             }
@@ -251,8 +280,9 @@ public class BaseWebserviceConfig {
     }
         
     public boolean isUriAuthWhitelisted(String path) {
-        if(this.getAuthWhitelistedURIPatterns() == null) {
-            return true;
+        List<Pattern> whitelistedURIPatterns = this.getAuthWhitelistedURIPatterns();
+        if(whitelistedURIPatterns == null) {
+            return false;
         }
         
         // Add "/" at the end of path to match "target/*"
@@ -260,12 +290,11 @@ public class BaseWebserviceConfig {
             path += "/";
         }
         
-        for(Pattern pattern : this.getAuthWhitelistedURIPatterns()) {
+        for(Pattern pattern : whitelistedURIPatterns) {
             if(pattern.matcher(path).matches()) {
                 return true;
             }
         }
         return false;
     }
-
 }

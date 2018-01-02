@@ -17,11 +17,16 @@
 package com.github.ketal.webservice;
 
 import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import javax.inject.Singleton;
+import javax.ws.rs.Path;
 import javax.ws.rs.container.ContainerResponseFilter;
+import javax.ws.rs.ext.Provider;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,11 +36,19 @@ import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.server.ServerProperties;
 import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature;
+import org.glassfish.jersey.server.model.Resource;
+import org.glassfish.jersey.server.monitoring.ApplicationEvent;
 import org.glassfish.jersey.server.monitoring.ApplicationEventListener;
+import org.glassfish.jersey.server.monitoring.RequestEvent;
 import org.glassfish.jersey.server.monitoring.RequestEventListener;
 import org.glassfish.jersey.server.spi.internal.ValueFactoryProvider;
 
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
 import com.codahale.metrics.health.HealthCheckRegistry;
+import com.codahale.metrics.jersey2.InstrumentedResourceMethodApplicationListener;
 import com.github.ketal.webservice.authorization.AdminRoleFilter;
 import com.github.ketal.webservice.configuration.BaseWebserviceConfig;
 import com.github.ketal.webservice.configuration.ConfigException;
@@ -43,23 +56,35 @@ import com.github.ketal.webservice.configuration.injection.Config;
 import com.github.ketal.webservice.configuration.injection.ConfigInjectionFactoryProvider;
 import com.github.ketal.webservice.configuration.parser.ConfigFactory;
 import com.github.ketal.webservice.configuration.parser.ConfigParser;
+import com.github.ketal.webservice.resource.AppConfigResource;
 import com.github.ketal.webservice.resource.HealthCheckResource;
 import com.github.ketal.webservice.resource.LoggerResource;
+import com.github.ketal.webservice.resource.MetricsResource;
 import com.github.ketal.webservice.util.Generics;
 
 public abstract class WebserviceApplication<T extends BaseWebserviceConfig> extends ResourceConfig {
-    private final static Logger logger = LogManager.getLogger(WebserviceApplication.class);
+    
+    private static final Logger logger = LogManager.getLogger(WebserviceApplication.class);
 
     protected T configuration;
 
     private MetricsRegistryFeature metricsRegistryFeature;
+    private boolean metricsAreRegistered;
     private HealthCheckRegistry healthCheckRegistry;
-
-    public WebserviceApplication() {
+    
+    public WebserviceApplication(String applicationName) {
         super();
+        setApplicationName(applicationName);
+        initialize();
+    }
+    
+    public final void initialize() {
         try {
-            setApplicationName(getApplicationName());
-            registerDefaults();
+            
+            this.loadConfig();
+            if(this.configuration.isRegisterDefaults()) {
+                registerDefaults();
+            }
             initializeJersey();
         } catch (ConfigException | IOException e) {
             logger.error("Exception initializing webservice.", e);
@@ -73,8 +98,10 @@ public abstract class WebserviceApplication<T extends BaseWebserviceConfig> exte
 
     public abstract void destroyApp();
 
-    public abstract String getApplicationName();
-
+    public String getConfigPath() throws ConfigException {
+        return ConfigFactory.getConfigPath();
+    }
+    
     private Class<T> getConfigurationClass() {
         return Generics.getTypeParameter(getClass(), BaseWebserviceConfig.class);
     }
@@ -83,16 +110,16 @@ public abstract class WebserviceApplication<T extends BaseWebserviceConfig> exte
         return this.configuration;
     }
 
-    private T loadConfig() throws IOException, ConfigException {
-        return this.loadConfig(ConfigFactory.getConfigPath());
+    private final T loadConfig() throws IOException, ConfigException {
+        return this.loadConfig(getConfigPath());
     }
 
-    public T loadConfig(String path) throws ConfigException, IOException {
+    public final T loadConfig(String path) throws ConfigException, IOException {
         ConfigParser<T> configurationParser = ConfigFactory.getParser(path, this.getConfigurationClass());
         return this.loadConfig(path, configurationParser);
     }
 
-    private T loadConfig(String path, ConfigParser<T> configurationParser) throws IOException, ConfigException {
+    private final T loadConfig(String path, ConfigParser<T> configurationParser) throws IOException, ConfigException {
         if (this.configuration == null) {
             
             this.configuration = (path == null) ? configurationParser.build() : configurationParser.build(path);
@@ -108,18 +135,13 @@ public abstract class WebserviceApplication<T extends BaseWebserviceConfig> exte
                     }).in(Singleton.class);
                 }
             });
-
-            // register(AppConfigResource.class);
         }
         return this.configuration;
     }
 
-    protected void registerDefaults() throws ConfigException, IOException {
+    private final void registerDefaults() {
 
-        this.loadConfig();
-        
-        metricsRegistryFeature = new MetricsRegistryFeature(this);
-        metricsRegistryFeature.registerMetrics();
+        this.registerMetrics(new MetricsRegistryFeature());
 
         this.registerHealthCheckRegistry();
 
@@ -145,6 +167,25 @@ public abstract class WebserviceApplication<T extends BaseWebserviceConfig> exte
         
     }
 
+    private void registerMetrics(MetricsRegistryFeature metricsRegistryFeature) {
+        if (metricsAreRegistered) {
+            return;
+        }
+        
+        this.metricsRegistryFeature = metricsRegistryFeature;
+        register(new InstrumentedResourceMethodApplicationListener(metricsRegistryFeature.getMetricRegistry()));
+        register(new AbstractBinder() {
+            @Override
+            protected void configure() {
+                bind(metricsRegistryFeature.getMetricRegistry()).to(MetricRegistry.class);
+            }
+        });
+
+        register(MetricsResource.class);
+        
+        metricsAreRegistered = true;
+    }
+    
     private void registerHealthCheckRegistry() {
         this.healthCheckRegistry = new HealthCheckRegistry();
         register(new AbstractBinder() {
@@ -172,13 +213,14 @@ public abstract class WebserviceApplication<T extends BaseWebserviceConfig> exte
     }
 
     protected ApplicationEventListener getApplicationEventListener() {
-        return new WebserviceApplicationEventListener<T>(this, this.metricsRegistryFeature.getMetricRegistry());
+        return new WebserviceApplicationEventListener(this.metricsRegistryFeature.getMetricRegistry());
     }
 
     private void registerApplicationEventListener() {
         if (!isComponentRegistered(RequestEventListener.class)) {
-            logger.debug("Registering {} as application event listener.", getApplicationEventListener());
-            register(getApplicationEventListener());
+            ApplicationEventListener eventListener = getApplicationEventListener();
+            logger.debug("Registering {} as application event listener.", eventListener);
+            register(eventListener);
         }
     }
 
@@ -195,5 +237,110 @@ public abstract class WebserviceApplication<T extends BaseWebserviceConfig> exte
 
     public HealthCheckRegistry getHealthchecks() {
         return healthCheckRegistry;
+    }
+    
+    private class WebserviceApplicationEventListener implements ApplicationEventListener {
+        private final Logger logger = LogManager.getLogger(WebserviceApplicationEventListener.class);
+
+        private final String newline = String.format("%n");
+        
+        private volatile int requestCnt = 0;
+        private Meter[] responses;
+        private Timer connectionTimer;    
+        private Counter activeRequests;
+        private MetricRegistry metricRegistry;
+
+        public WebserviceApplicationEventListener(MetricRegistry metricRegistry) {
+            this.metricRegistry = metricRegistry;
+            
+            this.connectionTimer = this.metricRegistry.timer(MetricRegistry.name(WebserviceRequestEventListener.class, "connections"));
+            this.activeRequests = this.metricRegistry.counter(MetricRegistry.name(WebserviceRequestEventListener.class, "active-requests"));
+            this.responses = new Meter[]{
+                    this.metricRegistry.meter(MetricRegistry.name(WebserviceRequestEventListener.class, "1xx-responses")), // 1xx
+                    this.metricRegistry.meter(MetricRegistry.name(WebserviceRequestEventListener.class, "2xx-responses")), // 2xx
+                    this.metricRegistry.meter(MetricRegistry.name(WebserviceRequestEventListener.class, "3xx-responses")), // 3xx
+                    this.metricRegistry.meter(MetricRegistry.name(WebserviceRequestEventListener.class, "4xx-responses")), // 4xx
+                    this.metricRegistry.meter(MetricRegistry.name(WebserviceRequestEventListener.class, "5xx-responses"))  // 5xx
+            };
+        }
+        
+        @Override
+        public void onEvent(ApplicationEvent event) {
+
+            String appName = event.getResourceConfig().getApplicationName();
+
+            switch (event.getType()) {
+            case INITIALIZATION_FINISHED:
+                logger.info("Starting {} Web Service.", appName);
+                this.logComponents(event.getResourceConfig().getClasses(), event.getResourceConfig().getResources());
+
+                // Do something, i.e. initialize application
+                initApp();
+                
+                logger.info("{} Web service Ready", appName);
+                break;
+
+            case DESTROY_FINISHED:
+                logger.info("{} Web Service shutdown called.", appName);
+                
+                // Do something, i.e. shutdown application
+                destroyApp();
+                destroyDefaults();
+                
+                logger.info("{} Web Service destroyed.", appName);
+                break;
+
+            case INITIALIZATION_APP_FINISHED:
+                logger.info("Jersey initialization finished.");
+                break;
+
+            case INITIALIZATION_START:
+                logger.info("Starting {} Web Service initialization", appName);
+                break;
+
+            case RELOAD_FINISHED:
+                break;
+
+            default:
+                logger.info("WebserviceApplicationConfiguration: Unknown Application event happend", event.getType());
+                break;
+            }
+        }
+        
+        private void logComponents(Set<Class<?>> classes, Set<Resource> allResources) {
+            final Set<String> resources = new HashSet<>();
+            final StringBuilder resourcesSB = new StringBuilder();
+            resourcesSB.append(newline).append("The following resource classes were found:").append(newline).append(newline);
+            
+            final Set<String> providers = new HashSet<>(); 
+            final StringBuilder providersSB = new StringBuilder();
+            providersSB.append("The following provider classes were found:").append(newline).append(newline);
+            
+            final Set<Class<?>> allResourcesClasses = new HashSet<>();
+            
+            classes.forEach(c -> {
+                if(c.isAnnotationPresent((Class<? extends Annotation>) Path.class)) {
+                    resources.add(c.getCanonicalName());
+                    resourcesSB.append("    - ").append(c.getCanonicalName()).append(newline);
+                } else if(c.isAnnotationPresent((Class<? extends Annotation>) Provider.class)) {
+                    providers.add(c.getCanonicalName());
+                    providersSB.append("    - ").append(c.getCanonicalName()).append(newline);
+                }
+                
+                if (!c.isInterface() && Resource.from(c) != null) {
+                    allResourcesClasses.add(c);
+                }
+            });
+            
+            logger.info(resourcesSB.toString());
+            logger.info(providersSB.toString());
+            logger.info(new WebserviceEnpointLogger().getEndpointsInfo(allResourcesClasses, allResources));
+        }
+
+        @Override
+        public RequestEventListener onRequest(RequestEvent requestEvent) {
+            return new WebserviceRequestEventListener(this.requestCnt, this.activeRequests, this.connectionTimer, this.responses);
+        }
+
     }
 }

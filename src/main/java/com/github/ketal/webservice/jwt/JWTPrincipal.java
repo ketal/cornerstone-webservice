@@ -23,7 +23,7 @@ import java.util.List;
 public class JWTPrincipal implements Principal {
 
     protected final String name;
-    protected final String roles[];
+    protected final String[] roles;
 
     /**
      * Construct a new JWTPrincipal, for the specified username, with the specified role names (as Strings).
@@ -49,7 +49,7 @@ public class JWTPrincipal implements Principal {
     }
 
     public String[] getRoles() {
-        return this.roles;
+        return Arrays.copyOf(this.roles, this.roles.length);
     }
 
     public Principal getUserPrincipal() {

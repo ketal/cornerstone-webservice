@@ -46,12 +46,12 @@ public abstract class AbstractExceptionMapper<T extends Throwable> implements Ex
 
     protected T exception;
 
-    final private List<Variant> variants = Variant.mediaTypes(
+    private final List<Variant> variants = Variant.mediaTypes(
             MediaType.TEXT_PLAIN_TYPE, 
             MediaType.APPLICATION_XML_TYPE, 
             MediaType.APPLICATION_JSON_TYPE).build();
 
-    abstract protected ResponseBuilder getResponseBuilder();
+    protected abstract ResponseBuilder getResponseBuilder();
 
     protected WsError getWsError() {
         return new WsError(this.exception.getMessage());
@@ -60,8 +60,8 @@ public abstract class AbstractExceptionMapper<T extends Throwable> implements Ex
     @Override
     public Response toResponse(T exception) {
         this.exception = exception;
-        logger.debug("Exception caught by WsExceptionMapper. Exception: {}", this.exception.getMessage());
-        logger.trace(this.exception);
+        logger.debug("Exception caught by WsExceptionMapper. Error: {}", this.exception.getMessage());
+        logger.trace("Exception: ", this.exception);
 
         ResponseBuilder responseBuilder = getResponseBuilder();
 

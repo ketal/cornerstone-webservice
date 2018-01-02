@@ -25,6 +25,7 @@ import javax.ws.rs.core.Response;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
@@ -35,7 +36,7 @@ import com.github.ketal.webservice.authorization.AdminRole;
 @AdminRole
 public class LoggerResource {
 
-//    private final static Logger logger = LogManager.getLogger(LoggerResource.class);
+    private static final Logger logger = LogManager.getLogger(LoggerResource.class);
     
     @PUT
     @Produces(MediaType.APPLICATION_JSON)
@@ -46,6 +47,7 @@ public class LoggerResource {
         LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME); 
         loggerConfig.setLevel(Level.getLevel(level.toUpperCase()));
         ctx.updateLoggers();
+        logger.log(Level.getLevel(level.toUpperCase()), "Updated logger to '{}' log level.", level);
         return Response.ok().build();
     }
     

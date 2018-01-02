@@ -31,7 +31,7 @@ public abstract class PagedDataObject<T> {
     private static final Integer DEFAULT_PAGE_SIZE = 20;
 
     @XmlTransient
-    protected Integer PAGES_TO_DISPLAY = 5;
+    protected Integer pagesToDisplay = 5;
 
     /*
      * Start Index of the search query result based on pagination
@@ -221,26 +221,25 @@ public abstract class PagedDataObject<T> {
         this.currentPage = (currentPage != null) ? currentPage : 1;
 
         // calculate total pages
-        this.totalPages = (int) Math.ceil(this.totalItems / this.pageSize);
+        this.totalPages = (int) Math.ceil(this.totalItems / (double) this.pageSize);
         if(this.totalPages == 0 && this.totalItems > 0) {
             this.totalPages = 1;
         }
 
-        if (this.totalPages <= PAGES_TO_DISPLAY) {
+        if (this.totalPages <= pagesToDisplay) {
             // less than DEFAULT_PAGES_TO_DISPLAY total pages so show all
             this.startPage = 1;
             this.endPage = this.totalPages;
         } else {
             // more than DEFAULT_PAGES_TO_DISPLAY total pages so calculate start and end pages
-            if (this.currentPage <= (Math.floor(PAGES_TO_DISPLAY / 2) + 1)) {
+            if (this.currentPage <= (Math.floor(pagesToDisplay / 2.0) + 1)) {
                 this.startPage = 1;
-                this.endPage = PAGES_TO_DISPLAY;
-            } else if (this.currentPage + (Math.ceil(PAGES_TO_DISPLAY / 2) - 1) >= this.totalPages) {
-                this.startPage = this.totalPages - (PAGES_TO_DISPLAY - 1);
+                this.endPage = pagesToDisplay;
+            } else if (this.currentPage + (Math.ceil(pagesToDisplay / 2.0) - 1) >= this.totalPages) {
+                this.startPage = this.totalPages - (pagesToDisplay - 1);
                 this.endPage = this.totalPages;
             } else {
-                this.startPage = this.currentPage - (PAGES_TO_DISPLAY / 2);
-                // this.endPage = this.currentPage + (DEFAULT_PAGES_TO_DISPLAY / 2);
+                this.startPage = this.currentPage - (pagesToDisplay / 2);
                 this.endPage = this.startPage + (DEFAULT_PAGE_SIZE - 1);
             }
         }
@@ -254,7 +253,7 @@ public abstract class PagedDataObject<T> {
         this.hasPreviousPage = this.currentPage > 1;
 
         // create an array of pages for the pager control
-        pages = new ArrayList<>();
+        pages = new ArrayList<>(totalPages);
         for (int i = this.startPage; i < this.endPage + 1; i++) {
             pages.add(i);
         }

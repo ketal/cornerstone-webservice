@@ -17,28 +17,30 @@
 package com.github.ketal.webservice.resource;
 
 import javax.ws.rs.GET;
-import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Request;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import com.codahale.metrics.annotation.Timed;
 import com.github.ketal.webservice.configuration.BaseWebserviceConfig;
-import com.github.ketal.webservice.configuration.injection.Config;
+import com.github.ketal.webservice.exception.NotModifiedException;
+import com.github.ketal.webservice.util.WSResponse;
 
-// Example config resource
+public abstract class AppConfigResource<T extends BaseWebserviceConfig> {
 
-//@Path("/appconfig")
-public class AppConfigResource {
-
-    @Config 
-    private BaseWebserviceConfig config;
+    @Context Request request;
+    
+    protected abstract T getConfig();
     
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Timed
-    public BaseWebserviceConfig getAppConfig(@QueryParam("pretty") boolean pretty) {
-        return config;
+    public Response getAppConfig(@QueryParam("pretty") boolean pretty) throws NotModifiedException {
+        return WSResponse.response(request, getConfig(), Status.OK);
     }
     
 }

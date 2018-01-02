@@ -14,10 +14,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.github.ketal.webservice.jwt;
+package com.github.ketal.webservice.authorization;
 
-public interface JWTAuthenticator {
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-    JWTPrincipal authenticate(String username, String password) throws JWTException;
+import javax.ws.rs.NameBinding;
 
+@NameBinding
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ ElementType.METHOD, ElementType.TYPE })
+@Documented
+public @interface MonitorRole {
 }

@@ -26,6 +26,10 @@ import com.github.ketal.webservice.exception.NotModifiedException;
 
 public class WSResponse {
 
+    private WSResponse() {
+        throw new IllegalStateException("WSResponse class");
+    }
+    
     public static Response response(Request request, Object entity, Status status) throws NotModifiedException {
 
         Response.ResponseBuilder response = null;

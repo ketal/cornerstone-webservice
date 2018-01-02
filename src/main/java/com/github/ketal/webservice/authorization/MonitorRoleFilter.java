@@ -25,19 +25,29 @@ import javax.ws.rs.core.Response;
 import com.github.ketal.webservice.configuration.BaseWebserviceConfig;
 import com.github.ketal.webservice.configuration.injection.Config;
 
-@AdminRole
-public class AdminRoleFilter implements ContainerRequestFilter {
+@MonitorRole
+public class MonitorRoleFilter implements ContainerRequestFilter {
 
     @Config
     private BaseWebserviceConfig config;
 
     @Override
     public void filter(ContainerRequestContext requestContext) throws IOException {
+        String monitorRole = config.getMonitorResourceRole();
         String adminRole = config.getAdminResourceRole();
+
+        if(adminRole == null || adminRole.isEmpty() || monitorRole == null || monitorRole.isEmpty()) {
+            return;
+        }
+        
         if(adminRole != null && !adminRole.isEmpty() && requestContext.getSecurityContext().isUserInRole(adminRole)) {
             return;
         }
-    
+        
+        if(monitorRole != null && !monitorRole.isEmpty() && requestContext.getSecurityContext().isUserInRole(monitorRole)) {
+            return;
+        }
+        
         requestContext.abortWith(Response.status(Response.Status.FORBIDDEN).entity("User does not have required role.").build());
     }
 }

@@ -28,13 +28,17 @@ import com.github.ketal.webservice.configuration.ConfigException;
 
 public final class ConfigFactory {
 
+    private ConfigFactory() {
+        throw new IllegalStateException("ConfigFactory class");
+    }
+    
     public static <T> ConfigParser<T> getDefaultParser(Class<T> clazz) throws ConfigException {
         return getParser(getConfigPath(), clazz);
     }
 
-    public static <T> ConfigParser<T> getParser(String path, Class<T> clazz) throws ConfigException {
+    public static <T> ConfigParser<T> getParser(String path, Class<T> clazz) {
 
-        ConfigParser<T> configurationParser = new YamlConfigParser<T>(clazz);
+        ConfigParser<T> configurationParser = new YamlConfigParser<>(clazz);
         
         if (path != null && path.toLowerCase().endsWith("json")) {
             configurationParser = new JsonConfigParser<>(clazz);

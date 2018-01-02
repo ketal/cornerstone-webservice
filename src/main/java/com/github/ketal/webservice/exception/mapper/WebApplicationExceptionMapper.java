@@ -38,10 +38,11 @@ public class WebApplicationExceptionMapper extends AbstractExceptionMapper<WebAp
         WsError error = new WsError(exception.getMessage());
         Throwable cause = exception.getCause();
         if (cause != null) {
+            Throwable cause2;
             if (cause.getMessage() != null) {
                 error.setErrorMessage(cause.getMessage());
-            } else if (cause.getCause() != null && cause.getCause().getMessage() != null) {
-                error.setErrorMessage(cause.getCause().getMessage());
+            } else if ((cause2 = cause.getCause()) != null && cause2.getMessage() != null) {
+                error.setErrorMessage(cause2.getMessage());
             } else if ((((JAXBException) cause).getLinkedException()) != null 
                     && (((JAXBException) cause).getLinkedException().getMessage()) != null) {
                 error.setErrorMessage(((JAXBException) cause).getLinkedException().getMessage());

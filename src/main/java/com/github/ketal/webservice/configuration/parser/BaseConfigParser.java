@@ -18,6 +18,7 @@ package com.github.ketal.webservice.configuration.parser;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -41,10 +42,8 @@ import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.github.ketal.webservice.configuration.ConfigException;
 
-import jersey.repackaged.com.google.common.collect.ImmutableSet;
-
 public abstract class BaseConfigParser<T> implements ConfigParser<T> {
-    private final static Logger logger = LogManager.getLogger(BaseConfigParser.class);
+    private static final Logger logger = LogManager.getLogger(BaseConfigParser.class);
 
     private final Class<T> klass;
     private ObjectMapper mapper;
@@ -58,8 +57,7 @@ public abstract class BaseConfigParser<T> implements ConfigParser<T> {
     
     @Override
     public T build() throws IOException, ConfigException {
-        String nullPath = null;
-        return this.build(nullPath);
+        return this.build((File) null);
     }
 
     @Override
@@ -67,6 +65,7 @@ public abstract class BaseConfigParser<T> implements ConfigParser<T> {
         return this.build(new File(path));
     }
 
+    @Override
     public T build(File file) throws ConfigException, IOException {
         final String path = (file == null) ? "default application config" : file.getAbsolutePath();
         try {
@@ -75,7 +74,7 @@ public abstract class BaseConfigParser<T> implements ConfigParser<T> {
             
             final Set<ConstraintViolation<T>> violations = getValidator().validate(config);
             if (!violations.isEmpty()) {
-                final Set<String> errors = new HashSet<>();
+                final Set<String> errors = new HashSet<>(violations.size());
                 for (ConstraintViolation<?> v : violations) {
                     errors.add(String.format("%s %s", v.getPropertyPath(), v.getMessage()));
                 }
@@ -85,22 +84,22 @@ public abstract class BaseConfigParser<T> implements ConfigParser<T> {
         } catch (UnrecognizedPropertyException e) {
             final List<String> properties = e.getKnownPropertyIds().stream().map(Object::toString).collect(Collectors.toList());
             throw new ConfigException(path,
-                    formatError("Unrecognized field", null, e.getPath(), e.getLocation(), properties, e.getPropertyName()), e);
+                    formatError("Unrecognized field", null, e.getPath(), e.getLocation(), properties), e);
         } catch (InvalidFormatException e) {
             final String sourceType = e.getValue().getClass().getSimpleName();
             final String targetType = e.getTargetType().getSimpleName();
             throw new ConfigException(path,
-                    formatError("Incorrect type of value", "is of type: " + sourceType + ", expected: " + targetType, e.getPath(), e.getLocation(), null, null), e);
+                    formatError("Incorrect type of value", "is of type: " + sourceType + ", expected: " + targetType, e.getPath(), e.getLocation(), null), e);
         } catch (JsonMappingException e) {
             throw new ConfigException(path,
-                    formatError("Failed to parse configuration", e.getMessage(), e.getPath(), e.getLocation(), null, null), e);
+                    formatError("Failed to parse configuration", e.getMessage(), e.getPath(), e.getLocation(), null), e);
         } catch (JsonParseException e) {
-            throw new ConfigException(path, formatError("Malformed " + getFormat(), e.getMessage(), null, e.getLocation(), null, null), e);
+            throw new ConfigException(path, formatError("Malformed " + getFormat(), e.getMessage(), null, e.getLocation(), null), e);
         }
     }
 
-    private ImmutableSet<String> formatError(String summary, String detail, List<JsonMappingException.Reference> fieldPath, JsonLocation location,
-            Collection<String> suggestions, String suggestionBase) {
+    private List<String> formatError(String summary, String detail, List<JsonMappingException.Reference> fieldPath, JsonLocation location,
+            Collection<String> suggestions) {
         final StringBuilder sb = new StringBuilder(summary);
         if (fieldPath != null && !fieldPath.isEmpty()) {
             sb.append(" at: ").append(buildPath(fieldPath));
@@ -130,7 +129,9 @@ public abstract class BaseConfigParser<T> implements ConfigParser<T> {
             }
         }
 
-        return ImmutableSet.of(sb.toString());
+        List<String> errors = new ArrayList<>();
+        errors.add(sb.toString());
+        return errors;
     }
 
     private String buildPath(Iterable<JsonMappingException.Reference> path) {

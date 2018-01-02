@@ -34,13 +34,13 @@ import com.github.ketal.webservice.model.WsError;
 public abstract class JWTAuthenticationResource {
 
     @Config
-    BaseWebserviceConfig config;
+    protected BaseWebserviceConfig config;
     
     @Inject
-    private JWTAuthenticator authenticator;
+    protected JWTAuthenticator authenticator;
 
+    // Must provide injected JWTAuthenticator;
     public JWTAuthenticationResource() {
-        // Must provide injected JWTAuthenticator;
     }
     
     public JWTAuthenticationResource(JWTAuthenticator authenticator) {

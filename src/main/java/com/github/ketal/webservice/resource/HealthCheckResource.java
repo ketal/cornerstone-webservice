@@ -37,12 +37,12 @@ import com.codahale.metrics.health.HealthCheckRegistry;
 import com.codahale.metrics.json.HealthCheckModule;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.ketal.webservice.authorization.AdminRole;
+import com.github.ketal.webservice.authorization.MonitorRole;
 
 @Path("/healthcheck")
-@AdminRole
+@MonitorRole
 public class HealthCheckResource {
-    private final static Logger logger = LogManager.getLogger(HealthCheckResource.class);
+    private static final Logger logger = LogManager.getLogger(HealthCheckResource.class);
 
     @Inject
     private HealthCheckRegistry registry;

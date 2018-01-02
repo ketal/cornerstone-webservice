@@ -16,7 +16,8 @@
  */
 package com.github.ketal.webservice.jwt;
 
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
+import java.security.Key;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -34,30 +35,58 @@ public class JWTTokenUtil {
     private static final String USER = "username";
     private static final String ROLE = "roles";
     private final String secretKey;
+    private final Key key;
+    private final SignatureAlgorithm algorithm;
+    
+    private static final Charset charset = Charset.forName("UTF-8");
+    
 
     public JWTTokenUtil(String secretKey) {
         this.secretKey = secretKey;
+        this.algorithm = SignatureAlgorithm.HS512;
+        this.key = null;
     }
 
-    public String generateToken(JWTPrincipal principal, Date expiration, Map<String, Object> claims) throws UnsupportedEncodingException {
+    public JWTTokenUtil(Key key) {
+        this.key = key;
+        this.algorithm = SignatureAlgorithm.RS512;
+        this.secretKey = null;
+    }
+    
+    public String generateToken(JWTPrincipal principal, Date expiration, Map<String, Object> claims) {
         JwtBuilder jwtBuilder = Jwts.builder()
                 .setSubject(principal.getName())
                 .setExpiration(expiration)
                 .setIssuedAt(new Date())
                 .claim(USER, principal.getName())
                 .claim(ROLE, principal.getRoles())
-                .addClaims(claims)
-                .signWith(SignatureAlgorithm.HS256, this.secretKey.getBytes("UTF-8"));
-        String jwtToken = jwtBuilder.compact();
-        return jwtToken;
+                .addClaims(claims);
+        
+        if (this.secretKey != null) {
+            jwtBuilder.signWith(this.algorithm, this.secretKey.getBytes(charset));
+        } else {
+            jwtBuilder.signWith(this.algorithm, key);
+        }
+        
+        return jwtBuilder.compact();
     }
 
-    public JWTPrincipal validateToken(String jwtToken) throws Exception {
-        Jws<Claims> claims = Jwts.parser().setSigningKey(this.secretKey.getBytes("UTF-8")).parseClaimsJws(jwtToken);
+    public JWTPrincipal validateToken(String jwtToken) throws JWTException {
+        Jws<Claims> claims = null;
+        if (this.secretKey != null) {
+            claims = Jwts.parser().setSigningKey(this.secretKey.getBytes(charset)).parseClaimsJws(jwtToken);
+        } else {
+            claims = Jwts.parser().setSigningKey(this.key).parseClaimsJws(jwtToken);
+        }
+        
+        if(!this.algorithm.getValue().equals(claims.getHeader().getAlgorithm())) {
+            throw new JWTException("Invalid token algorithm.");
+        }
+        
         Claims body = claims.getBody();
         
         if (new Date().after(body.getExpiration())) {
-            throw new Exception("Token has expired.");
+            throw new JWTException("Token has expired.");
         }
         
         String username = body.getSubject();
@@ -67,22 +96,22 @@ public class JWTTokenUtil {
         return new JWTPrincipal(username, roles);
     }
     
-    public Object getClaim(String jwtToken, Object keyName) throws Exception {
-        Jws<Claims> claims = Jwts.parser().setSigningKey(this.secretKey.getBytes("UTF-8")).parseClaimsJws(jwtToken);
+    public Object getClaim(String jwtToken, Object keyName) {
+        Jws<Claims> claims = Jwts.parser().setSigningKey(this.secretKey.getBytes(charset)).parseClaimsJws(jwtToken);
         Claims body = claims.getBody();
         
         return body.get(keyName);
     }
     
-    public Map<String, Object> getClaims(String jwtToken, List<String> claimKeys) throws Exception {
+    public Map<String, Object> getClaims(String jwtToken, List<String> claimKeys) {
         Map<String, Object> claims = new HashMap<>();
         
-        Jws<Claims> jwtClaims = Jwts.parser().setSigningKey(this.secretKey.getBytes("UTF-8")).parseClaimsJws(jwtToken);
+        Jws<Claims> jwtClaims = Jwts.parser().setSigningKey(this.secretKey.getBytes(charset)).parseClaimsJws(jwtToken);
         Claims body = jwtClaims.getBody();
-        for(String key : claimKeys) {
+        for(String claimKey : claimKeys) {
             Object value;
-            if((value = body.get(key)) != null) {
-                claims.put(key, value);
+            if((value = body.get(claimKey)) != null) {
+                claims.put(claimKey, value);
             }
         }
         

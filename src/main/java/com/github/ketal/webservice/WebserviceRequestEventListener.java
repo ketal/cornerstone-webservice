@@ -16,6 +16,8 @@
  */
 package com.github.ketal.webservice;
 
+import java.util.Arrays;
+
 import org.glassfish.jersey.server.ContainerResponse;
 import org.glassfish.jersey.server.ExtendedUriInfo;
 import org.glassfish.jersey.server.monitoring.RequestEvent;
@@ -28,22 +30,22 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
 
 public class WebserviceRequestEventListener implements RequestEventListener {
-    private final static Logger logger = LoggerFactory.getLogger(WebserviceRequestEventListener.class);
+    private static final Logger logger = LoggerFactory.getLogger(WebserviceRequestEventListener.class);
     
     private final int requestNumber;
     private long startTime;
     
     private final Timer connectionTimer;
     private Counter activeRequests;
-    private Meter[] responses;
+    private final Meter[] responses;
     private Timer.Context context = null;
     
-    public WebserviceRequestEventListener(int requestNumber, Counter activeRequests, Timer connectionTimer, Meter[] responses) {
+    public WebserviceRequestEventListener(int requestNumber, Counter activeRequests, Timer connectionTimer, final Meter[] responses) {
         this.requestNumber = requestNumber;
         this.activeRequests = activeRequests;
         this.activeRequests.inc();
         this.connectionTimer = connectionTimer;
-        this.responses = responses;
+        this.responses = Arrays.copyOf(responses, responses.length);
         
         startTime = System.currentTimeMillis();
         context = this.connectionTimer.time();
@@ -60,7 +62,7 @@ public class WebserviceRequestEventListener implements RequestEventListener {
             case FINISHED:
                 context.stop();
                 logger.trace("Request #{} finished. Processing time: {} ms.", requestNumber, (System.currentTimeMillis() - startTime));
-                updateResponses(event.getContainerResponse(), startTime);
+                updateResponses(event.getContainerResponse());
                 break;
             case EXCEPTION_MAPPER_FOUND:
                 break;
@@ -91,7 +93,7 @@ public class WebserviceRequestEventListener implements RequestEventListener {
         }
     }
     
-    private void updateResponses(ContainerResponse containerResponse, long start) {
+    private void updateResponses(ContainerResponse containerResponse) {
         if(containerResponse != null) {
             final int responseStatus = containerResponse.getStatus() / 100;
             if (responseStatus >= 1 && responseStatus <= 5) {

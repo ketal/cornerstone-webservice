@@ -41,7 +41,7 @@ import org.glassfish.jersey.server.validation.internal.ValidationHelper;
 @Provider
 public class ValidationExceptionMapper implements ExceptionMapper<ValidationException>  {
 
-    private static final Logger logger = LogManager.getLogger(ValidationExceptionMapper.class.getName());
+    private static final Logger logger = LogManager.getLogger(ValidationExceptionMapper.class);
 
     @Context
     private Configuration config;
@@ -74,10 +74,10 @@ public class ValidationExceptionMapper implements ExceptionMapper<ValidationExce
                 response.type(MediaType.TEXT_PLAIN_TYPE);
             }
             
-            List<ValidationError> errors = new ArrayList<>();
+            List<ValidationError> errors = new ArrayList<>(ValidationHelper.constraintViolationToValidationErrors(cve).size());
             for(ValidationError error : ValidationHelper.constraintViolationToValidationErrors(cve)) {
                 error.setMessageTemplate(null);
-                error.setPath(error.getPath().substring(error.getPath().lastIndexOf(".") + 1, error.getPath().length()));
+                error.setPath(error.getPath().substring(error.getPath().lastIndexOf('.') + 1, error.getPath().length()));
                 errors.add(error);
             }
             
