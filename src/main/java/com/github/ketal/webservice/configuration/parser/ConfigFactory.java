@@ -23,11 +23,17 @@ import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NameNotFoundException;
 import javax.naming.NamingException;
+import javax.naming.NoInitialContextException;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import com.github.ketal.webservice.configuration.ConfigException;
 
 public final class ConfigFactory {
 
+    private static Logger logger = LogManager.getLogger(ConfigFactory.class); 
+    
     private ConfigFactory() {
         throw new IllegalStateException("ConfigFactory class");
     }
@@ -71,7 +77,8 @@ public final class ConfigFactory {
             if (envPath != null && !envPath.isEmpty()) {
                 path = envPath;
             }
-        } catch (NameNotFoundException e) {
+        } catch (NameNotFoundException | NoInitialContextException e) {
+            logger.info("'APPCONFIG' property not found.");
             // Ignore error if 'APPCONFIG' variable is not found.
         } catch (NamingException ex) {
             ArrayList<String> errors = new ArrayList<>();
