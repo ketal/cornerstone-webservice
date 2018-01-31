@@ -5,10 +5,8 @@ import java.security.GeneralSecurityException;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.junit.Assert;
-import org.junit.Test;
-
-import com.github.ketal.cornerstone.webservice.crypto.PBKDF2HashEncoderDecoder;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class PBKDF2HashEncoderDecoderTest {
 
@@ -20,13 +18,13 @@ public class PBKDF2HashEncoderDecoderTest {
     public void encodeDecodeTest() throws GeneralSecurityException {
         String encodedString = PBKDF2HashEncoderDecoder.encode(TEST_STRING);
         logger.debug("Encoded String: {}->{}", encodedString.length(), encodedString);
-        Assert.assertTrue(PBKDF2HashEncoderDecoder.matches(TEST_STRING, encodedString));
+        Assertions.assertTrue(PBKDF2HashEncoderDecoder.matches(TEST_STRING, encodedString));
     }
     
     @Test
     public void encodeDecodeWithIterationCountTest() throws GeneralSecurityException {
         String encodedString = PBKDF2HashEncoderDecoder.encode(TEST_STRING, 100000);
         logger.debug("Encoded String: {}", encodedString);
-        Assert.assertTrue(PBKDF2HashEncoderDecoder.matches(TEST_STRING, encodedString));
+        Assertions.assertTrue(PBKDF2HashEncoderDecoder.matches(TEST_STRING, encodedString));
     }
 }
