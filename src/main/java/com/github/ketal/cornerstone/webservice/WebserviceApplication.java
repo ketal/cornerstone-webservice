@@ -160,7 +160,7 @@ public abstract class WebserviceApplication<T extends BaseWebserviceConfig> exte
             getServerProperties().entrySet().forEach(p -> property(p.getKey(), p.getValue()));
         }
         
-        packages("com.github.ketal.webservice.exception.mapper");
+        packages("com.github.ketal.cornerstone.webservice.exception.mapper");
 
         register(LoggerResource.class);
         register(AdminRoleFilter.class);
