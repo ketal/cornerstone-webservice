@@ -56,7 +56,6 @@ import com.github.ketal.cornerstone.webservice.configuration.injection.Config;
 import com.github.ketal.cornerstone.webservice.configuration.injection.ConfigInjectionFactoryProvider;
 import com.github.ketal.cornerstone.webservice.configuration.parser.ConfigFactory;
 import com.github.ketal.cornerstone.webservice.configuration.parser.ConfigParser;
-import com.github.ketal.cornerstone.webservice.resource.AppConfigResource;
 import com.github.ketal.cornerstone.webservice.resource.HealthCheckResource;
 import com.github.ketal.cornerstone.webservice.resource.LoggerResource;
 import com.github.ketal.cornerstone.webservice.resource.MetricsResource;
