@@ -37,7 +37,7 @@ import com.github.ketal.cornerstone.webservice.authorization.MonitorRole;
 import com.github.ketal.cornerstone.webservice.configuration.BaseWebserviceConfig;
 import com.github.ketal.cornerstone.webservice.configuration.injection.Config;
 
-@Path("/metrics")
+@Path("metrics")
 @MonitorRole
 public class MetricsResource {
     

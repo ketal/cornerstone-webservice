@@ -39,7 +39,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.ketal.cornerstone.webservice.authorization.MonitorRole;
 
-@Path("/healthcheck")
+@Path("healthcheck")
 @MonitorRole
 public class HealthCheckResource {
     private static final Logger logger = LogManager.getLogger(HealthCheckResource.class);

@@ -28,6 +28,7 @@ import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Request;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.Variant;
 import javax.ws.rs.ext.ExceptionMapper;
 import javax.ws.rs.ext.Provider;
@@ -37,6 +38,9 @@ import org.apache.logging.log4j.Logger;
 import org.glassfish.jersey.server.validation.ValidationError;
 import org.glassfish.jersey.server.validation.internal.LocalizationMessages;
 import org.glassfish.jersey.server.validation.internal.ValidationHelper;
+
+import com.github.ketal.cornerstone.webservice.exception.InputValidationException;
+import com.github.ketal.cornerstone.webservice.model.WsError;
 
 @Provider
 public class ValidationExceptionMapper implements ExceptionMapper<ValidationException>  {
@@ -56,23 +60,7 @@ public class ValidationExceptionMapper implements ExceptionMapper<ValidationExce
 
             final ConstraintViolationException cve = (ConstraintViolationException) exception;
             final Response.ResponseBuilder response = Response.status(ValidationHelper.getResponseStatus(cve));
-
-            // Entity.
-            final List<Variant> variants = Variant.mediaTypes(
-                    MediaType.TEXT_PLAIN_TYPE,
-                    MediaType.TEXT_HTML_TYPE,
-                    MediaType.APPLICATION_XML_TYPE,
-                    MediaType.APPLICATION_JSON_TYPE).build();
-            final Variant variant = request.selectVariant(variants);
-            if (variant != null) {
-                response.type(variant.getMediaType());
-            } else {
-
-                // default media type which will be used only when none media type from {@value variants} is in accept
-                // header of original request.
-                // could be settable by configuration property.
-                response.type(MediaType.TEXT_PLAIN_TYPE);
-            }
+            response.type(getMediaType());            
             
             List<ValidationError> errors = new ArrayList<>(ValidationHelper.constraintViolationToValidationErrors(cve).size());
             for(ValidationError error : ValidationHelper.constraintViolationToValidationErrors(cve)) {
@@ -83,11 +71,41 @@ public class ValidationExceptionMapper implements ExceptionMapper<ValidationExce
             
             response.entity(new GenericEntity<>(errors,new GenericType<List<ValidationError>>() {}.getType()));
             return response.build();
+        } else if (exception instanceof InputValidationException) {
+            logger.warn(LocalizationMessages.VALIDATION_EXCEPTION_RAISED(), exception);
+            final Response.ResponseBuilder response = Response.status(Status.BAD_REQUEST);
+            response.type(getMediaType());
+            WsError error = new WsError(exception.getMessage());
+            
+            return response.entity(error).build();
+            
         } else {
             logger.warn(LocalizationMessages.VALIDATION_EXCEPTION_RAISED(), exception);
-
-            return Response.serverError().entity(exception.getMessage()).build();
+            final Response.ResponseBuilder response = Response.serverError();
+            response.type(getMediaType());
+            WsError error = new WsError(exception.getMessage());
+            
+            return response.entity(error).build();
         }
     }
 
+    private MediaType getMediaType() {
+     // Entity.
+        final List<Variant> variants = Variant.mediaTypes(
+                MediaType.TEXT_PLAIN_TYPE,
+                MediaType.TEXT_HTML_TYPE,
+                MediaType.APPLICATION_XML_TYPE,
+                MediaType.APPLICATION_JSON_TYPE).build();
+        final Variant variant = request.selectVariant(variants);
+        if (variant != null) {
+            return variant.getMediaType();
+        } else {
+
+            // default media type which will be used only when none media type from {@value variants} is in accept
+            // header of original request.
+            // could be settable by configuration property.
+            return MediaType.TEXT_PLAIN_TYPE;
+        }
+    }
+    
 }

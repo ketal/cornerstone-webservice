@@ -38,21 +38,21 @@ public abstract class PagedDataObject<T> {
      */
     @XmlElement(name = "startIndex")
     @Min(value = 0)
-    private Integer startIndex;
+    private Long startIndex;
 
     /*
      * Last index of the search query result based on pagination
      */
     @XmlElement(name = "endIndex")
     @Min(value = 0)
-    private Integer endIndex;
+    private Long endIndex;
 
     /*
      * Total results from the search query
      */
     @XmlElement(name = "totalItems")
     @Min(value = 0)
-    private Integer totalItems;
+    private Long totalItems;
 
     /*
      * Number of rows/elements/objects in a page size
@@ -93,7 +93,7 @@ public abstract class PagedDataObject<T> {
      * List of pages for pagination based on frame size starting with startPage and endPage
      */
     @XmlElement(name = "pages")
-    private List<Integer> pages;
+    private List<Long> pages;
 
     /*
      * True/False based on if there is next page available to traverse
@@ -107,15 +107,15 @@ public abstract class PagedDataObject<T> {
     @XmlElement(name = "hasPreviousPage")
     private Boolean hasPreviousPage;
 
-    protected PagedDataObject(Integer totalItems) {
+    protected PagedDataObject(Long totalItems) {
         this(totalItems, null, null);
     }
 
-    protected PagedDataObject(Integer totalItems, Integer pageSize) {
+    protected PagedDataObject(Long totalItems, Integer pageSize) {
         this(totalItems, pageSize, null);
     }
 
-    protected PagedDataObject(Integer totalItems, Integer pageSize, Integer currentPage) {
+    protected PagedDataObject(Long totalItems, Integer pageSize, Integer currentPage) {
         this.totalItems = totalItems;
         this.pageSize = pageSize;
         this.currentPage = currentPage;
@@ -123,27 +123,27 @@ public abstract class PagedDataObject<T> {
         this.generatePagedDataObject();
     }
 
-    public Integer getStartIndex() {
+    public Long getStartIndex() {
         return startIndex;
     }
 
-    public void setStartIndex(Integer startIndex) {
+    public void setStartIndex(Long startIndex) {
         this.startIndex = startIndex;
     }
 
-    public Integer getEndIndex() {
+    public Long getEndIndex() {
         return endIndex;
     }
 
-    public void setEndIndex(Integer endIndex) {
+    public void setEndIndex(Long endIndex) {
         this.endIndex = endIndex;
     }
 
-    public Integer getTotalItems() {
+    public Long getTotalItems() {
         return totalItems;
     }
 
-    public void setTotalItems(Integer totalItems) {
+    public void setTotalItems(Long totalItems) {
         this.totalItems = totalItems;
     }
 
@@ -187,11 +187,11 @@ public abstract class PagedDataObject<T> {
         this.totalPages = totalPages;
     }
 
-    public List<Integer> getPages() {
+    public List<Long> getPages() {
         return pages;
     }
 
-    public void setPages(List<Integer> pages) {
+    public void setPages(List<Long> pages) {
         this.pages = pages;
     }
 
@@ -245,7 +245,7 @@ public abstract class PagedDataObject<T> {
         }
 
         // calculate start and end item indexes
-        this.startIndex = (this.currentPage - 1) * this.pageSize;
+        this.startIndex = (long)(this.currentPage - 1) * this.pageSize;
         this.endIndex = Math.max(0, Math.min(this.startIndex + this.pageSize - 1, this.totalItems - 1));
 
         // figure out if next and previous pages are available
@@ -254,7 +254,7 @@ public abstract class PagedDataObject<T> {
 
         // create an array of pages for the pager control
         pages = new ArrayList<>(totalPages);
-        for (int i = this.startPage; i < this.endPage + 1; i++) {
+        for (long i = this.startPage; i < this.endPage + 1; i++) {
             pages.add(i);
         }
 

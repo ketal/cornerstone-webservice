@@ -32,7 +32,7 @@ import org.apache.logging.log4j.core.config.LoggerConfig;
 
 import com.github.ketal.cornerstone.webservice.authorization.AdminRole;
 
-@Path("/logger")
+@Path("logger")
 @AdminRole
 public class LoggerResource {
 
