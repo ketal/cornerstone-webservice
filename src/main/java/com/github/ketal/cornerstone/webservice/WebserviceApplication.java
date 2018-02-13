@@ -41,7 +41,6 @@ import org.glassfish.jersey.server.monitoring.ApplicationEvent;
 import org.glassfish.jersey.server.monitoring.ApplicationEventListener;
 import org.glassfish.jersey.server.monitoring.RequestEvent;
 import org.glassfish.jersey.server.monitoring.RequestEventListener;
-import org.glassfish.jersey.server.spi.internal.ValueFactoryProvider;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
@@ -53,9 +52,16 @@ import com.github.ketal.cornerstone.webservice.authorization.AdminRoleFilter;
 import com.github.ketal.cornerstone.webservice.configuration.BaseWebserviceConfig;
 import com.github.ketal.cornerstone.webservice.configuration.ConfigException;
 import com.github.ketal.cornerstone.webservice.configuration.injection.Config;
-import com.github.ketal.cornerstone.webservice.configuration.injection.ConfigInjectionFactoryProvider;
+import com.github.ketal.cornerstone.webservice.configuration.injection.ConfigInjectionResolver;
 import com.github.ketal.cornerstone.webservice.configuration.parser.ConfigFactory;
 import com.github.ketal.cornerstone.webservice.configuration.parser.ConfigParser;
+import com.github.ketal.cornerstone.webservice.exception.mapper.JavaLangErrorMapper;
+import com.github.ketal.cornerstone.webservice.exception.mapper.NotAcceptableExceptionMapper;
+import com.github.ketal.cornerstone.webservice.exception.mapper.NotModifiedExceptionMapper;
+import com.github.ketal.cornerstone.webservice.exception.mapper.ValidationExceptionMapper;
+import com.github.ketal.cornerstone.webservice.exception.mapper.WebApplicationExceptionMapper;
+import com.github.ketal.cornerstone.webservice.exception.mapper.WsErrorMessageBodyWriter;
+import com.github.ketal.cornerstone.webservice.exception.mapper.WsThrowableMapper;
 import com.github.ketal.cornerstone.webservice.resource.HealthCheckResource;
 import com.github.ketal.cornerstone.webservice.resource.LoggerResource;
 import com.github.ketal.cornerstone.webservice.resource.MetricsResource;
@@ -128,10 +134,13 @@ public abstract class WebserviceApplication<T extends BaseWebserviceConfig> exte
                 protected void configure() {
                     bind(configuration).to(BaseWebserviceConfig.class);
                     bind(configuration).to(getConfigurationClass());
-
-                    bind(ConfigInjectionFactoryProvider.class).to(ValueFactoryProvider.class).in(Singleton.class);
-                    bind(ConfigInjectionFactoryProvider.ConfigInjectionResolver.class).to(new TypeLiteral<InjectionResolver<Config>>() {
-                    }).in(Singleton.class);
+                    
+//                    // Below will use factory to provide configuration instance but bind above provides the same
+//                    BaseWebserviceConfigFactory factory = new BaseWebserviceConfigFactory(configuration);
+//                    bindFactory(factory).to(BaseWebserviceConfig.class);
+//                    bindFactory(factory).to(getConfigurationClass());
+                    
+                    bind(ConfigInjectionResolver.class).to(new TypeLiteral<InjectionResolver<Config>>(){}).in(Singleton.class);
                 }
             });
         }
@@ -159,8 +168,16 @@ public abstract class WebserviceApplication<T extends BaseWebserviceConfig> exte
             getServerProperties().entrySet().forEach(p -> property(p.getKey(), p.getValue()));
         }
         
-        packages("com.github.ketal.cornerstone.webservice.exception.mapper");
+        // Register Exception Mappers
+        register(JavaLangErrorMapper.class);
+        register(NotAcceptableExceptionMapper.class);
+        register(NotModifiedExceptionMapper.class);
+        register(ValidationExceptionMapper.class);
+        register(WebApplicationExceptionMapper.class);
+        register(WsErrorMessageBodyWriter.class);
+        register(WsThrowableMapper.class);
 
+        // Register resources
         register(LoggerResource.class);
         register(AdminRoleFilter.class);
         
